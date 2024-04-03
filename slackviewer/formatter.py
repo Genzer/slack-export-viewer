@@ -74,15 +74,29 @@ class SlackFormatter(object):
             # Handle bold (convert * * to ** **)
             message = re.sub(r'\*', "**", message)
 
-            message = markdown2.markdown(
-                message,
-                extras=[
-                    "cuddled-lists",
-                    # This gives us <pre> and <code> tags for ```-fenced blocks
-                    "fenced-code-blocks",
-                    "pyshell"
-                ]
-            ).strip()
+            try:
+                message = markdown2.markdown(
+                    message,
+                    extras=[
+                        "cuddled-lists",
+                        # This gives us <pre> and <code> tags for ```-fenced blocks
+                        "fenced-code-blocks",
+                        "pyshell"
+                    ]
+                ).strip()
+            except Exception as markdown_rendering_failed:
+                # NOTE:
+                # Because not every message on Slack are written in correct markdown syntax, parsing
+                # will probably fail thus halting the entire process. Logging the error as well as
+                # the content of the message helps troubleshooting the issue.
+                # 
+                # For example: a message of "+ + this is not a markdown list` will halt the process by
+                # an AssertionError simply because markdown2 has the following assertion:
+                #
+                #     assert re.match(r'^<(?:ul|ol).*?>', cuddled_list)
+                #
+                logging.exception("Cannot render message as Markdown: %s", message)
+
 
         # Special handling cases for lists
         message = message.replace("\n\n<ul>", "<ul>")
